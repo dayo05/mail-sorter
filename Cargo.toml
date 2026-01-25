@@ -1,0 +1,14 @@
+[package]
+name = "mail_sorter"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+async-imap = "0.11.1"
+async-native-tls = "0.5.0"
+async-std = "1.13.2"
+anyhow = "1.0.100"
+tokio = { version = "1", features = ["full"] }
+futures = "0.3.31"
+mailparse = "0.16.1"
+regex = "1.12.2"
