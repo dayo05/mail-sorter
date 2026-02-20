@@ -54,6 +54,9 @@ async fn process_mail(session: &mut IMAPSession, header: BasicMailHeader) -> Res
             return Ok(());
         }
     }
+    else {
+        session.move_mail(header.uid.to_string(), "Cc").await?;
+    }
 
     Ok(())
 }
@@ -98,35 +101,41 @@ async fn process_bulk(
                     let from_addr_list = addrparse(from.as_str())?
                         .extract_single_info()
                         .expect(format!("From parse failed: {from}").as_str());
-                    let to_addr_list = addrparse(to.as_str())?
-                        .iter()
-                        .find_map(|x| match x {
-                            Group(g) => {
-                                for x in get_mail_regex().unwrap() {
-                                    let regex = Regex::new(x.as_str()).unwrap();
-                                    for i in g.addrs.iter() {
-                                        println!("Match: {i}");
-                                        if regex.is_match(i.addr.as_str()) {
-                                            return Some(i.clone());
+
+                    let to_addr_list = match addrparse(to.as_str()) {
+                        Ok(x) => x.iter()
+                            .find_map(|x| match x {
+                                Group(g) => {
+                                    for x in get_mail_regex().unwrap() {
+                                        let regex = Regex::new(x.as_str()).unwrap();
+                                        for i in g.addrs.iter() {
+                                            println!("Match: {i}");
+                                            if regex.is_match(i.addr.as_str()) {
+                                                return Some(i.clone());
+                                            }
                                         }
                                     }
+                                    None
                                 }
-                                None
-                            }
-                            Single(s) => {
-                                for x in get_mail_regex().unwrap() {
-                                    let regex = Regex::new(x.as_str()).unwrap();
-                                    if regex.is_match(s.addr.as_str()) {
-                                        return Some(s.clone());
+                                Single(s) => {
+                                    for x in get_mail_regex().unwrap() {
+                                        let regex = Regex::new(x.as_str()).unwrap();
+                                        if regex.is_match(s.addr.as_str()) {
+                                            return Some(s.clone());
+                                        }
                                     }
+                                    None
                                 }
-                                None
-                            }
-                        })
-                        .unwrap_or(SingleInfo {
+                            })
+                            .unwrap_or(SingleInfo {
+                                display_name: None,
+                                addr: "".to_string(),
+                            }),
+                        Err(e) => SingleInfo {
                             display_name: None,
                             addr: "".to_string(),
-                        });
+                        }
+                    };
 
                     let basic_header = BasicMailHeader {
                         uid,
@@ -206,6 +215,6 @@ async fn main() -> Result<()> {
             false,
             next_expected_uid,
         )
-        .await?;
+            .await?;
     }
 }
